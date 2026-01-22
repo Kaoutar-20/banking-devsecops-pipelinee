@@ -26,7 +26,7 @@ jobs:
         run: composer require --dev phpstan/phpstan
 
       - name: Run PHPStan Scan
-        run: vendor/bin/phpstan analyse ./DVWA --error-format=json > phpstan-report.json || true
+        run: vendor/bin/phpstan analyse ./DVWA --error-format=json > phpstan-report.json || false
 
       - name: Upload SAST Artifact
         uses: actions/upload-artifact@v4
