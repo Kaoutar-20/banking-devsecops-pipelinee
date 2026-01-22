@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: recursive
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -26,7 +29,7 @@ jobs:
         run: vendor/bin/phpstan analyse ./DVWA --error-format=json > phpstan-report.json || true
 
       - name: Upload SAST Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: always()
         with:
           name: phpstan-report
