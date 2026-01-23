@@ -25,10 +25,11 @@ jobs:
         with:
           projectBaseDir: './DVWA'
           args: >
-            -Dsonar.projectKey=DVWA
+            -Dsonar.projectKey=banking-devsecops-pipelinee
             -Dsonar.organization=kaoutar-20
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 
 
 
