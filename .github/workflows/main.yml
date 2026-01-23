@@ -41,9 +41,42 @@ jobs:
           name: phpstan-report
           path: phpstan-report.json
 
+    # ===============================
+      # 2️⃣ Tests unitaires
+      # ===============================
+      - name: Install PHPUnit
+        run: composer require --dev phpunit/phpunit
+
+      - name: Run Unit Tests
+        run: |
+          # Test des petites unités de code (fonctions, classes)
+          vendor/bin/phpunit --testsuite unit || true
+
+      # ===============================
+      # 3️⃣ Tests fonctionnels
+      # ===============================
+      - name: Run Functional Tests
+        run: |
+          # Test des fonctionnalités globales (ex: connexion, formulaire)
+          vendor/bin/phpunit --testsuite functional || true
+
+      # ===============================
+      # 4️⃣ Tests d’intégration
+      # ===============================
+      - name: Run Integration Tests
+        run: |
+          # Test des interactions entre plusieurs composants (DB, API)
+          vendor/bin/phpunit --testsuite integration || true
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phpunit-reports
+          path: ./phpunit-report.xml
 
   # ==================================
-  # 2️⃣ Docker Build + Image Security
+  # Docker Build + Image Security
   # ==================================
   image_scan:
     name: Build and Scan DVWA Image
