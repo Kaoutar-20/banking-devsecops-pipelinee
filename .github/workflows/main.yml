@@ -8,10 +8,10 @@ on:
 jobs:
 
   # ===============================
-  # 1️⃣ SAST – Analyse statique PHP
+  # 1️⃣ SAST – Analyse statique PHP via SonarQube
   # ===============================
   sast_scan:
-    name: SAST Scan DVWA
+    name: SAST Scan DVWA with SonarQube
     runs-on: ubuntu-latest
 
     steps:
@@ -21,25 +21,28 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+      - name: Set up JDK (required for SonarQube Scanner)
+        uses: actions/setup-java@v3
         with:
-          php-version: '8.1'
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Install PHPStan
-        run: composer require --dev phpstan/phpstan
-
-      - name: Run PHPStan Scan
+      - name: Install SonarQube Scanner
         run: |
-          vendor/bin/phpstan analyse ./DVWA \
-          --error-format=json > phpstan-report.json || true
+          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+          unzip sonar-scanner.zip
+          export PATH="$PWD/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
 
-      - name: Upload SAST Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: phpstan-report
-          path: phpstan-report.json
+      - name: Run SonarQube Scan
+        env:
+          SONAR_HOST_URL: http://localhost:9000
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=DVWA \
+            -Dsonar.sources=./DVWA \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.login=$SONAR_TOKEN
 
   # ==================================
   # 2️⃣ SCA – Analyse des dépendances avec Trivy
@@ -47,7 +50,7 @@ jobs:
   sca_scan:
     name: SCA Scan DVWA
     runs-on: ubuntu-latest
-    needs: sast_scan  # s'assure que SAST est terminé
+    needs: sast_scan
 
     steps:
       - name: Checkout code
@@ -63,7 +66,6 @@ jobs:
 
       - name: Run Trivy SCA Scan
         run: |
-          # Analyse des dépendances PHP via composer.lock
           trivy fs --security-checks vuln --exit-code 1 --format json --output trivy-sca-report.json ./DVWA || true
 
       - name: Upload SCA Artifact
@@ -74,14 +76,14 @@ jobs:
           path: trivy-sca-report.json
 
   # ==================================
-  # 2️⃣ Docker Build + Image Security
+  # 3️⃣ Docker Build + Image Security
   # ==================================
   image_scan:
     name: Build and Scan DVWA Image
     runs-on: ubuntu-latest
     needs:
-     - sast_scan
-     - sca_scan
+      - sast_scan
+      - sca_scan
 
     steps:
       - name: Checkout code
@@ -96,10 +98,9 @@ jobs:
       - name: Build DVWA Docker Image
         run: docker build -t dvwa:latest ./DVWA
 
-       # 🔐 Docker Hub Login (OBLIGATOIRE pour Docker Scout)
       - name: Login to Docker Hub
         run: echo ${{ secrets.REPO_PWD }} | docker login -u ${{ secrets.REPO_USER }} --password-stdin
-        
+
       - name: Install Docker Scout
         run: |
           curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install-scout.sh
