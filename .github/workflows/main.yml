@@ -6,57 +6,30 @@ on:
       - main
 
 jobs:
+
   # ===============================
-  # 1️⃣ SAST – Analyse statique PHP via SonarQube
+  # 1️⃣ SAST – Analyse statique PHP via SonarCloud
   # ===============================
   sast_scan:
-    name: SAST Scan DVWA with SonarQube
+    name: SAST Scan DVWA with SonarCloud
     runs-on: ubuntu-latest
-    services:
-      sonarqube:
-        image: sonarqube:lts
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd="curl -f http://localhost:9000 || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up JDK (required for SonarQube Scanner)
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
-      - name: Install unzip & curl
-        run: sudo apt-get update && sudo apt-get install -y unzip curl
-
-      - name: Install SonarQube Scanner
-        run: |
-          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-          unzip sonar-scanner.zip
-          echo "$PWD/sonar-scanner-4.8.0.2856-linux/bin" >> $GITHUB_PATH
-
-      - name: Wait for SonarQube
-        run: |
-          echo "Waiting for SonarQube to be ready..."
-          until curl -s http://localhost:9000; do sleep 5; done
-
-      - name: Run SonarQube Scan
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        with:
+          projectBaseDir: './DVWA'
         env:
-          SONAR_HOST_URL: http://localhost:9000
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=DVWA \
-            -Dsonar.sources=./DVWA \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN
 
   # ==================================
   # 2️⃣ SCA – Analyse des dépendances avec Trivy
