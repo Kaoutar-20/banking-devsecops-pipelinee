@@ -23,11 +23,13 @@ jobs:
       - name: SonarCloud Scan
         uses: sonarsource/sonarcloud-github-action@v2
         with:
-          organization: "kaoutar-20"       # exactement comme sur SonarCloud
-          projectKey: "DVWA"               # exactement comme sur SonarCloud
           projectBaseDir: "./DVWA"
+          args: >
+            -Dsonar.projectKey=DVWA
+            -Dsonar.organization=kaoutar-20
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 
 
   # ==================================
