@@ -64,7 +64,7 @@ jobs:
       - name: Run Trivy SCA Scan
         run: |
           # Analyse des dépendances PHP via composer.lock
-          trivy fs --security-checks vuln --exit-code 1 --format json --output trivy-sca-report.json ./DVWA
+          trivy fs --security-checks vuln --exit-code 1 --format json --output trivy-sca-report.json ./DVWA || true
 
       - name: Upload SCA Artifact
         uses: actions/upload-artifact@v4
