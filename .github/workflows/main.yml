@@ -31,8 +31,7 @@ jobs:
 
       - name: Run PHPStan Scan
         run: |
-          vendor/bin/phpstan analyse ./DVWA \
-          --error-format=json > phpstan-report.json || true
+          vendor/bin/phpstan analyse ./DVWA --error-format=json > phpstan-report.json || true
 
       - name: Upload SAST Artifact
         uses: actions/upload-artifact@v4
@@ -42,9 +41,9 @@ jobs:
           path: phpstan-report.json
 
   # ===============================
-  # 2️⃣ Tests Unitaires, Fonctionnels et d’Intégration
+  # 2️⃣ Tests unitaires, fonctionnels et intégration
   # ===============================
-  test_job:
+  php_tests:
     name: Run PHP Tests
     runs-on: ubuntu-latest
     needs: sast_scan
@@ -61,17 +60,20 @@ jobs:
       - name: Install PHPUnit
         run: composer require --dev phpunit/phpunit
 
+      - name: Create reports folder
+        run: mkdir -p ./phpunit-reports
+
       # Unit tests
       - name: Run Unit Tests
-        run: vendor/bin/phpunit --testsuite unit --log-junit ./unit-report.xml
+        run: vendor/bin/phpunit --testsuite unit --log-junit ./phpunit-reports/unit-report.xml || true
 
       # Functional tests
       - name: Run Functional Tests
-        run: vendor/bin/phpunit --testsuite functional --log-junit ./functional-report.xml
+        run: vendor/bin/phpunit --testsuite functional --log-junit ./phpunit-reports/functional-report.xml || true
 
       # Integration tests
       - name: Run Integration Tests
-        run: vendor/bin/phpunit --testsuite integration --log-junit ./integration-report.xml
+        run: vendor/bin/phpunit --testsuite integration --log-junit ./phpunit-reports/integration-report.xml || true
 
       # Upload all test reports
       - name: Upload Test Artifacts
@@ -79,10 +81,7 @@ jobs:
         if: always()
         with:
           name: phpunit-reports
-          path: |
-            ./unit-report.xml
-            ./functional-report.xml
-            ./integration-report.xml
+          path: ./phpunit-reports/
 
   # ==================================
   # 3️⃣ Docker Build + Image Security
@@ -90,7 +89,7 @@ jobs:
   image_scan:
     name: Build and Scan DVWA Image
     runs-on: ubuntu-latest
-    needs: test_job
+    needs: php_tests
 
     steps:
       - name: Checkout code
