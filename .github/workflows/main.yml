@@ -27,18 +27,14 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install SonarQube Scanner
+      - name: Install and Run SonarQube Scanner
+        env:
+          SONAR_HOST_URL: http://localhost:9000  # Remplace par SonarCloud URL si besoin
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
           unzip sonar-scanner.zip
-          export PATH="$PWD/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
-
-      - name: Run SonarQube Scan
-        env:
-          SONAR_HOST_URL: http://localhost:9000
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          sonar-scanner \
+          ./sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner \
             -Dsonar.projectKey=DVWA \
             -Dsonar.sources=./DVWA \
             -Dsonar.host.url=$SONAR_HOST_URL \
@@ -58,7 +54,7 @@ jobs:
 
       - name: Install Trivy
         run: |
-          sudo apt-get update && sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          sudo apt-get update && sudo apt-get install -y wget apt-transport-https gnupg lsb-release unzip
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
           echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
