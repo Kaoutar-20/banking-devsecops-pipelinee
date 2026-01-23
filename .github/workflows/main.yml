@@ -24,10 +24,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v2
         with:
           projectBaseDir: './DVWA'
+          # ton key SonarCloud
+          sonarHostUrl: https://sonarcloud.io
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
