@@ -41,6 +41,37 @@ jobs:
           name: phpstan-report
           path: phpstan-report.json
 
+  # ==================================
+  # 2️⃣ SCA – Analyse des dépendances avec Trivy
+  # ==================================
+  sca_scan:
+    name: SCA Scan DVWA
+    runs-on: ubuntu-latest
+    needs: sast_scan  # s'assure que SAST est terminé
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update && sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Run Trivy SCA Scan
+        run: |
+          # Analyse des dépendances PHP via composer.lock
+          trivy fs --security-checks vuln --exit-code 1 --format json --output trivy-sca-report.json ./DVWA
+
+      - name: Upload SCA Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-sca-report
+          path: trivy-sca-report.json
 
   # ==================================
   # 2️⃣ Docker Build + Image Security
