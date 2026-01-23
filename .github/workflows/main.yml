@@ -42,8 +42,8 @@ jobs:
           path: phpstan-report.json
 
     # ===============================
-      # 2️⃣ Tests unitaires
-      # ===============================
+    # 2️⃣ Tests unitaires
+    # ===============================
       - name: Install PHPUnit
         run: composer require --dev phpunit/phpunit
 
