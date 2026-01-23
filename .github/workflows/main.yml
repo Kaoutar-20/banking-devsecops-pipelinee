@@ -6,9 +6,6 @@ on:
       - main
 
 jobs:
-  # ===============================
-  # 1️⃣ SAST – Analyse statique PHP via SonarCloud
-  # ===============================
   sast_scan:
     name: SAST Scan DVWA with SonarCloud
     runs-on: ubuntu-latest
@@ -24,15 +21,13 @@ jobs:
           java-version: 17
 
       - name: Run SonarCloud Scan
-        uses: sonarsource/sonarqube-scan-action@v2
+        uses: sonarsource/sonarcloud-github-action@v2
+        with:
+          organization: "kaoutar-20"       # exactement comme sur SonarCloud
+          projectKey: "DVWA"               # exactement comme sur SonarCloud
+          projectBaseDir: "./DVWA"
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
-        with:
-          projectBaseDir: './DVWA'
-          args: >
-            -Dsonar.projectKey=DVWA
-            -Dsonar.organization=kaoutar-20
 
   # ==================================
   # 2️⃣ SCA – Analyse des dépendances avec Trivy
