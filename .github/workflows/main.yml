@@ -20,7 +20,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Run SonarCloud Scan
+      - name: SonarCloud Scan
         uses: sonarsource/sonarcloud-github-action@v2
         with:
           organization: "kaoutar-20"       # exactement comme sur SonarCloud
@@ -28,6 +28,7 @@ jobs:
           projectBaseDir: "./DVWA"
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 
   # ==================================
   # 2️⃣ SCA – Analyse des dépendances avec Trivy
