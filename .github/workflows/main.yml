@@ -6,7 +6,6 @@ on:
       - main
 
 jobs:
-
   # ===============================
   # 1️⃣ SAST – Analyse statique PHP via SonarCloud
   # ===============================
@@ -24,14 +23,13 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: SonarQube Scan
+      - name: Run SonarCloud Scan
         uses: sonarsource/sonarqube-scan-action@v2
+        env:
+          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: './DVWA'
-          # ton key SonarCloud
-          sonarHostUrl: https://sonarcloud.io
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # ==================================
   # 2️⃣ SCA – Analyse des dépendances avec Trivy
