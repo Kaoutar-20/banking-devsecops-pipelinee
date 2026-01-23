@@ -31,7 +31,8 @@ jobs:
 
       - name: Run PHPStan Scan
         run: |
-          vendor/bin/phpstan analyse ./DVWA --error-format=json > phpstan-report.json || true
+          vendor/bin/phpstan analyse ./DVWA \
+          --error-format=json > phpstan-report.json || true
 
       - name: Upload SAST Artifact
         uses: actions/upload-artifact@v4
@@ -41,7 +42,7 @@ jobs:
           path: phpstan-report.json
 
   # ===============================
-  # 2️⃣ Tests unitaires, fonctionnels et intégration
+  # 2️⃣ PHPUnit – Tests unitaires, fonctionnels et intégration
   # ===============================
   php_tests:
     name: Run PHP Tests
@@ -63,29 +64,21 @@ jobs:
       - name: Create reports folder
         run: mkdir -p ./phpunit-reports
 
-      # Unit tests
-      - name: Run Unit Tests
-        run: vendor/bin/phpunit --testsuite unit --log-junit ./phpunit-reports/unit-report.xml || true
+      - name: Run All PHPUnit Tests
+        run: |
+          # Exécute tous les tests et génère un rapport JUnit unique
+          vendor/bin/phpunit --log-junit ./phpunit-reports/phpunit-report.xml || true
 
-      # Functional tests
-      - name: Run Functional Tests
-        run: vendor/bin/phpunit --testsuite functional --log-junit ./phpunit-reports/functional-report.xml || true
-
-      # Integration tests
-      - name: Run Integration Tests
-        run: vendor/bin/phpunit --testsuite integration --log-junit ./phpunit-reports/integration-report.xml || true
-
-      # Upload all test reports
       - name: Upload Test Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: phpunit-reports
-          path: ./phpunit-reports/
+          name: phpunit-report
+          path: ./phpunit-reports/phpunit-report.xml
 
-  # ==================================
+  # ===============================
   # 3️⃣ Docker Build + Image Security
-  # ==================================
+  # ===============================
   image_scan:
     name: Build and Scan DVWA Image
     runs-on: ubuntu-latest
