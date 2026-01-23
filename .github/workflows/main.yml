@@ -26,7 +26,7 @@ jobs:
           projectBaseDir: './DVWA'
           args: >
             -Dsonar.projectKey=DVWA
-            -Dsonar.organization=Kaoutar-20
+            -Dsonar.organization=kaoutar-20
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
