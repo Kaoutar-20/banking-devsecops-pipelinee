@@ -32,7 +32,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=Kaoutar-20_banking-devsecops-pipelinee
-            -Dsonar.organization=Kaoutar-20
+            -Dsonar.organization=kaoutar-20
             -Dsonar.sources=DVWA
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.qualitygate.wait=true
