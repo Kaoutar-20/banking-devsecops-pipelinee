@@ -35,13 +35,9 @@ jobs:
             -Dsonar.organization=kaoutar-20
             -Dsonar.sources=DVWA
             -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.qualitygate.wait=true
 
-      # 🔐 SECURITY GATE SAST
-      - name: SonarCloud Quality Gate
-        uses: SonarSource/sonarcloud-quality-gate-action@v1
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  
 
   # ==================================
   # 2️⃣ SCA – Trivy FS + Security Gate
