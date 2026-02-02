@@ -7,11 +7,11 @@ on:
 
 jobs:
 
-  # =============================
-  # 1️⃣ SAST – Analyse statique PHP (SonarQube)
+  # ===============================
+  # 1️⃣ SAST – Analyse statique PHP (SonarCloud)
   # ===============================
   sast_scan:
-    name: SonarQube Scan DVWA
+    name: SonarCloud Scan DVWA
     runs-on: ubuntu-latest
 
     steps:
@@ -35,11 +35,17 @@ jobs:
           -Dsonar.organization=kaoutar-20
           -Dsonar.sources=DVWA
           -Dsonar.host.url=https://sonarcloud.io
- 
 
-  # ==================================
-  # 2️⃣ SCA – Trivy
-  # ==================================
+    - name: SonarCloud Quality Gate
+      uses: SonarSource/sonarcloud-quality-gate-action@v1
+      timeout-minutes: 5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+
+  # ===============================
+  # 2️⃣ SCA – Trivy filesystem
+  # ===============================
   sca_scan:
     name: SCA Scan DVWA with Trivy
     runs-on: ubuntu-latest
@@ -58,12 +64,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      - name: Run Trivy SCA Scan
+      - name: Run Trivy SCA Scan (Security Gate)
         run: |
-          trivy fs ./DVWA \
+          trivy fs \
             --security-checks vuln \
-            --format json \
-            --output trivy-sca-report.json || true
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            ./DVWA
 
       - name: Upload SCA Report
         uses: actions/upload-artifact@v4
@@ -71,9 +78,10 @@ jobs:
           name: trivy-sca-report
           path: trivy-sca-report.json
 
-  # ==================================
+
+  # ===============================
   # 3️⃣ Docker Image Build + Scan
-  # ==================================
+  # ===============================
   image_scan:
     name: Docker Image Security Scan
     runs-on: ubuntu-latest
@@ -90,6 +98,22 @@ jobs:
 
       - name: Login to Docker Hub
         run: echo "${{ secrets.REPO_PWD }}" | docker login -u "${{ secrets.REPO_USER }}" --password-stdin
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Trivy Image Scan (Security Gate)
+        run: |
+          trivy image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            dvwa:latest
 
       - name: Install Docker Scout
         run: |
