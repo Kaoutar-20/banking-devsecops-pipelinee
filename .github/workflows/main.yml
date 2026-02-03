@@ -8,7 +8,7 @@ on:
 jobs:
 
   # =============================
-  # 1️⃣ SAST – SonarCloud + Quality Gate
+  # 1️⃣ SAST – SonarCloud (Quality Gate désactivé)
   # =============================
   sast_scan:
     name: SAST - SonarCloud Scan
@@ -35,12 +35,12 @@ jobs:
             -Dsonar.organization=kaoutar-20
             -Dsonar.sources=DVWA
             -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.qualitygate.wait=false
+            -Dsonar.qualitygate.wait=false  # ✅ désactivé
 
   
 
   # ==================================
-  # 2️⃣ SCA – Trivy FS + Security Gate
+  # 2️⃣ SCA – Trivy FS + Security Gate désactivé
   # ==================================
   sca_scan:
     name: SCA - Trivy Filesystem Scan
@@ -53,15 +53,10 @@ jobs:
 
       - name: Install Trivy
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
 
-      # 🔐 SECURITY GATE SCA
-      - name: Trivy SCA Scan (Security Gate)
+      # 🔐 SECURITY GATE désactivé
+      - name: Trivy SCA Scan
         run: |
           trivy fs --security-checks vuln --severity HIGH,CRITICAL ./DVWA || true
 
@@ -83,7 +78,7 @@ jobs:
           path: trivy-sca-report.json
 
   # ==================================
-  # 3️⃣ Docker Build + Image Security Gate
+  # 3️⃣ Docker Build + Image Security Gate désactivé
   # ==================================
   image_scan:
     name: Docker Image Build & Security Scan
@@ -102,14 +97,12 @@ jobs:
 
       - name: Install Trivy
         run: |
-          sudo apt-get update
-          sudo apt-get install -y trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
 
-      # 🔐 SECURITY GATE IMAGE
-      - name: Trivy Image Scan (Security Gate)
+      # 🔐 SECURITY GATE IMAGE désactivé
+      - name: Trivy Image Scan
         run: |
           trivy image --severity HIGH,CRITICAL dvwa:latest || true
-
 
       # (Optionnel) Docker Scout – visibilité
       - name: Install Docker Scout
@@ -122,6 +115,7 @@ jobs:
 
       - name: Docker Scout CVE Scan
         run: docker scout cves dvwa:latest || true
+
   # ==================================
   # 4️⃣ CD – STAGING + DAST (OWASP ZAP)
   # ==================================
