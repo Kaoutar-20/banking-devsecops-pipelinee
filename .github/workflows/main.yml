@@ -144,14 +144,14 @@ jobs:
           done
           exit 1
 
-      # 🛡️ OWASP ZAP Baseline
+      # 🛡️ OWASP ZAP Baseline (IMAGE CORRIGÉE ✅)
       - name: OWASP ZAP Baseline Scan
         run: |
           mkdir -p zap-reports
 
           docker run --rm \
             -v $(pwd)/zap-reports:/zap/wrk \
-            owasp/zap2docker-stable \
+            zaproxy/zap-stable \
             zap-baseline.py \
             -t http://172.17.0.1:8080 \
             -r zap-report.html \
