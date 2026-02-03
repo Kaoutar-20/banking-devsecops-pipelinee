@@ -1,7 +1,7 @@
 name: DVWA DevSecOps Pipeline
 
 on:
-  push:
+  push: 
     branches:
       - main
 
@@ -37,6 +37,8 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.qualitygate.wait=false
 
+  
+
   # ==================================
   # 2️⃣ SCA – Trivy FS + Security Gate désactivé
   # ==================================
@@ -58,9 +60,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      - name: Trivy SCA Scan
-        run: trivy fs --security-checks vuln --severity HIGH,CRITICAL ./DVWA || true
+      # 🔐 SECURITY GATE SCA désactivé
+      - name: Trivy SCA Scan (Security Gate)
+        run: |
+          trivy fs --security-checks vuln --severity HIGH,CRITICAL ./DVWA || true
 
+      # 📊 Rapport pour audit
       - name: Trivy SCA Report
         if: always()
         run: |
@@ -78,10 +83,10 @@ jobs:
           path: trivy-sca-report.json
 
   # ==================================
-  # 3️⃣ Docker Build + CD + DAST
+  # 3️⃣ Docker Build + Image Security Gate désactivé
   # ==================================
-  cd_dast:
-    name: Docker Build + CD + DAST
+  image_scan:
+    name: Docker Image Build & Security Scan
     runs-on: ubuntu-latest
     needs: sca_scan
 
@@ -89,18 +94,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 🔹 Build Docker Image
       - name: Build DVWA Docker Image
         run: docker build -t dvwa:latest ./DVWA
 
       - name: Login to Docker Hub
         run: echo "${{ secrets.REPO_PWD }}" | docker login -u "${{ secrets.REPO_USER }}" --password-stdin
 
-      # 🔹 Trivy Image Scan désactivé
-      - name: Trivy Image Scan
-        run: trivy image --severity HIGH,CRITICAL dvwa:latest || true
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
 
-      # 🔹 Docker Scout – visibilité (optionnel)
+      # 🔐 SECURITY GATE IMAGE désactivé
+      - name: Trivy Image Scan (Security Gate)
+        run: |
+          trivy image --severity HIGH,CRITICAL dvwa:latest || true
+
+      # (Optionnel) Docker Scout – visibilité
       - name: Install Docker Scout
         run: |
           curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install-scout.sh
@@ -112,12 +121,25 @@ jobs:
       - name: Docker Scout CVE Scan
         run: docker scout cves dvwa:latest || true
 
-      # ===============================
-      # CD – Staging + DAST
-      # ===============================
-      - name: Run DVWA (Staging)
-        run: docker run -d --name dvwa-staging -p 8080:80 dvwa:latest
+  # ==================================
+  # 4️⃣ CD – STAGING + DAST (OWASP ZAP)
+  # ==================================
+  dast_scan:
+    name: CD Staging + DAST
+    runs-on: ubuntu-latest
+    needs: image_scan
 
+    steps:
+
+      # 🧱 ÉTAPE 1 — Lancer DVWA (STAGING)
+      - name: Run DVWA (Staging)
+        run: |
+          docker run -d \
+            --name dvwa-staging \
+            -p 8080:80 \
+            dvwa:latest
+
+      # 🧱 ÉTAPE 2 — Health Check
       - name: Health Check DVWA
         run: |
           for i in {1..10}; do
@@ -127,24 +149,26 @@ jobs:
           done
           exit 1
 
-      # 🔹 Pull ZAP Docker explicitement pour éviter erreur 125
-      - name: Pull OWASP ZAP Docker Image
-        run: docker pull owasp/zap2docker-stable:2.13.0
-
+      # 🧱 ÉTAPE 3 — DAST OWASP ZAP
       - name: OWASP ZAP Baseline Scan
         run: |
           docker run --rm \
             --network host \
-            owasp/zap2docker-stable:2.13.0 \
+            owasp/zap2docker-stable \
             zap-baseline.py \
             -t http://localhost:8080 \
             -r zap-report.html \
             -J zap-report.json
 
-      # 🔐 Security Gate DAST désactivé
+      # 🧱 ÉTAPE 4 — Security Gate DAST
       - name: DAST Security Gate
-        run: echo "Security Gate DAST désactivé pour test" || true
+        run: |
+          if grep -q '"risk":"High"' zap-report.json; then
+            echo "❌ High risk vulnerabilities found"
+            exit 1
+          fi
 
+      # 🧱 ÉTAPE 5 — Sauvegarde des rapports
       - name: Upload ZAP Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -154,6 +178,7 @@ jobs:
             zap-report.html
             zap-report.json
 
+      # 🧱 ÉTAPE 6 — Nettoyage
       - name: Cleanup
         if: always()
         run: |
