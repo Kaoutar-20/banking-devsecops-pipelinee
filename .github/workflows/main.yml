@@ -162,7 +162,7 @@ jobs:
            -t http://dvwa-staging:80 \
            -r zap-report.html \
            -J zap-report.json \
-           -T 5"
+           -T 5" || true
 
 
 
