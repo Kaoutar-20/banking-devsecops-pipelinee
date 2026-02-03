@@ -37,6 +37,7 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.qualitygate.wait=false
 
+
   # =============================
   # 2️⃣ SCA – Trivy FS
   # =============================
@@ -77,8 +78,9 @@ jobs:
           name: trivy-sca-report
           path: trivy-sca-report.json
 
+
   # =============================
-  # 3️⃣ Docker Image + PUSH + Scan
+  # 3️⃣ Docker Image + Push + Scan
   # =============================
   image_scan:
     name: Docker Build, Push & Image Scan
@@ -108,6 +110,7 @@ jobs:
         run: |
           trivy image --severity HIGH,CRITICAL ${{ secrets.REPO_USER }}/dvwa:latest || true
 
+
   # =============================
   # 4️⃣ CD STAGING + DAST (ZAP)
   # =============================
@@ -123,7 +126,6 @@ jobs:
       - name: Pull DVWA Image
         run: docker pull ${{ secrets.REPO_USER }}/dvwa:latest
 
-      # 🚀 Run DVWA
       - name: Run DVWA (Staging)
         run: |
           docker run -d \
@@ -131,7 +133,6 @@ jobs:
             -p 8080:80 \
             ${{ secrets.REPO_USER }}/dvwa:latest
 
-      # ❤️ Health Check
       - name: Health Check DVWA
         run: |
           for i in {1..10}; do
@@ -144,25 +145,24 @@ jobs:
           done
           exit 1
 
-      # 🛡️ OWASP ZAP Baseline (IMAGE CORRIGÉE ✅)
+      # 🛡️ OWASP ZAP Baseline (CORRIGÉ ✅)
       - name: OWASP ZAP Baseline Scan
         run: |
           mkdir -p zap-reports
 
           docker run --rm \
+            -u root \
             -v $(pwd)/zap-reports:/zap/wrk \
             zaproxy/zap-stable \
             zap-baseline.py \
-            -t http://172.17.0.1:8080 \
+            -t http://localhost:8080 \
             -r zap-report.html \
             -J zap-report.json || true
 
-      # 🚪 DAST Security Gate (désactivé)
       - name: DAST Security Gate
         run: |
           echo "DAST completed – Security Gate disabled (DVWA is intentionally vulnerable)"
 
-      # 📤 Upload ZAP Reports
       - name: Upload ZAP Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -170,7 +170,6 @@ jobs:
           name: zap-dast-report
           path: zap-reports/
 
-      # 🧹 Cleanup
       - name: Cleanup
         if: always()
         run: |
