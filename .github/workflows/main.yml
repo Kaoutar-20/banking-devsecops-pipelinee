@@ -161,7 +161,9 @@ jobs:
       - name: OWASP ZAP Baseline Scan
         run: |
           mkdir -p zap-reports
+          chmod 777 zap-reports
           docker run --rm \
+            --user $(id -u):$(id -g) \
             --network dvwa-net \
             -v $(pwd)/zap-reports:/zap/wrk \
             zaproxy/zap-stable \
