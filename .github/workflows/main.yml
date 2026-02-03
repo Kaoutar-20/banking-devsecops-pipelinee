@@ -7,9 +7,9 @@ on:
 
 jobs:
 
-  # ===========================
+  # ============================
   # 1️⃣ SAST – SonarCloud
-  # ===========================
+  # ============================
   sast_scan:
     name: SAST - SonarCloud Scan
     runs-on: ubuntu-latest
@@ -138,17 +138,16 @@ jobs:
             -p 8080:80 \
             ${{ secrets.REPO_USER }}/dvwa:latest
 
-      - name: Health Check DVWA
+      - name: Wait for DVWA to be ready
         run: |
-          for i in {1..10}; do
+          for i in {1..30}; do
             if curl -s http://localhost:8080 > /dev/null; then
-              echo "DVWA is UP"
-              exit 0
+              echo "DVWA is ready"
+              break
             fi
             echo "Waiting for DVWA..."
             sleep 5
           done
-          exit 1
 
       - name: OWASP ZAP Baseline Scan
         run: |
