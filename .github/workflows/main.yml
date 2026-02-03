@@ -58,11 +58,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      # 🔐 SECURITY GATE SCA désactivé
       - name: Trivy SCA Scan
         run: trivy fs --security-checks vuln --severity HIGH,CRITICAL ./DVWA || true
 
-      # 📊 Rapport JSON pour audit / preuves
       - name: Trivy SCA Report
         if: always()
         run: |
@@ -100,11 +98,9 @@ jobs:
       - name: Install Trivy
         run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
 
-      # 🔐 SECURITY GATE IMAGE désactivé
       - name: Trivy Image Scan
         run: trivy image --severity HIGH,CRITICAL dvwa:latest || true
 
-      # Optionnel : Docker Scout
       - name: Install Docker Scout
         run: |
           curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install-scout.sh
@@ -131,11 +127,9 @@ jobs:
       - name: Pull DVWA Image
         run: docker pull ${{ secrets.REPO_USER }}/dvwa:latest
 
-      # 🔹 Create Docker network
       - name: Create Docker network
         run: docker network create dvwa-net || true
 
-      # 🚀 Run DVWA (Staging)
       - name: Run DVWA (Staging)
         run: |
           docker run -d \
@@ -144,7 +138,6 @@ jobs:
             -p 8080:80 \
             ${{ secrets.REPO_USER }}/dvwa:latest
 
-      # ❤️ Health Check
       - name: Health Check DVWA
         run: |
           for i in {1..10}; do
@@ -157,7 +150,6 @@ jobs:
           done
           exit 1
 
-      # 🛡️ OWASP ZAP Baseline Scan
       - name: OWASP ZAP Baseline Scan
         run: |
           mkdir -p zap-reports
@@ -166,21 +158,15 @@ jobs:
             --user $(id -u):$(id -g) \
             --network dvwa-net \
             -v $(pwd)/zap-reports:/zap/wrk \
-            -e ZAP_USER=$(id -u) \
             zaproxy/zap-stable \
             zap-baseline.py \
             -t http://dvwa-staging:80 \
             -r /zap/wrk/zap-report.html \
             -J /zap/wrk/zap-report.json || true
 
-
-
-      # 🚪 DAST Security Gate (désactivé)
       - name: DAST Security Gate
-        run: |
-          echo "DAST completed – Security Gate disabled (DVWA is intentionally vulnerable)"
+        run: echo "DAST completed – Security Gate disabled (DVWA is intentionally vulnerable)"
 
-      # 📤 Upload ZAP Reports
       - name: Upload ZAP Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -188,7 +174,6 @@ jobs:
           name: zap-dast-report
           path: zap-reports/
 
-      # 🧹 Cleanup
       - name: Cleanup
         if: always()
         run: |
