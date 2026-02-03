@@ -58,11 +58,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      # 🔐 SECURITY GATE SCA désactivé
       - name: Trivy SCA Scan
         run: trivy fs --security-checks vuln --severity HIGH,CRITICAL ./DVWA || true
 
-      # 📊 Rapport pour audit
       - name: Trivy SCA Report
         if: always()
         run: |
@@ -118,11 +116,7 @@ jobs:
       # CD – Staging + DAST
       # ===============================
       - name: Run DVWA (Staging)
-        run: |
-          docker run -d \
-            --name dvwa-staging \
-            -p 8080:80 \
-            dvwa:latest
+        run: docker run -d --name dvwa-staging -p 8080:80 dvwa:latest
 
       - name: Health Check DVWA
         run: |
@@ -133,11 +127,15 @@ jobs:
           done
           exit 1
 
+      # 🔹 Pull ZAP Docker explicitement pour éviter erreur 125
+      - name: Pull OWASP ZAP Docker Image
+        run: docker pull owasp/zap2docker-stable:2.13.0
+
       - name: OWASP ZAP Baseline Scan
         run: |
           docker run --rm \
             --network host \
-            owasp/zap2docker-stable \
+            owasp/zap2docker-stable:2.13.0 \
             zap-baseline.py \
             -t http://localhost:8080 \
             -r zap-report.html \
