@@ -137,7 +137,7 @@ jobs:
           docker run -d \
             --name dvwa-staging \
             -p 8080:80 \
-            dvwa:${{ github.sha }}
+            dvwa:latest
 
       # 🧱 ÉTAPE 2 — Health Check
       - name: Health Check DVWA
