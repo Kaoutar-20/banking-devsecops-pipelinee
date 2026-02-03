@@ -165,7 +165,6 @@ jobs:
            -r /zap/wrk/zap-report.html \
            -J /zap/wrk/zap-report.json || true
  
-
       - name: DAST Security Gate
         run: echo "DAST completed – Security Gate disabled (DVWA is intentionally vulnerable)"
 
