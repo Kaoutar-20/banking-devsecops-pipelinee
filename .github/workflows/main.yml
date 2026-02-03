@@ -78,10 +78,10 @@ jobs:
           path: trivy-sca-report.json
 
   # =============================
-  # 3️⃣ Docker Image + Scan
+  # 3️⃣ Docker Image + PUSH + Scan
   # =============================
   image_scan:
-    name: Docker Build & Image Scan
+    name: Docker Build, Push & Image Scan
     runs-on: ubuntu-latest
     needs: sca_scan
 
@@ -89,11 +89,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build DVWA Docker Image
-        run: docker build -t dvwa:latest ./DVWA
-
       - name: Login to Docker Hub
         run: echo "${{ secrets.REPO_PWD }}" | docker login -u "${{ secrets.REPO_USER }}" --password-stdin
+
+      - name: Build DVWA Docker Image
+        run: |
+          docker build -t ${{ secrets.REPO_USER }}/dvwa:latest ./DVWA
+
+      - name: Push DVWA Docker Image
+        run: |
+          docker push ${{ secrets.REPO_USER }}/dvwa:latest
 
       - name: Install Trivy
         run: |
@@ -101,7 +106,7 @@ jobs:
 
       - name: Trivy Image Scan (Gate disabled)
         run: |
-          trivy image --severity HIGH,CRITICAL dvwa:latest || true
+          trivy image --severity HIGH,CRITICAL ${{ secrets.REPO_USER }}/dvwa:latest || true
 
   # =============================
   # 4️⃣ CD STAGING + DAST (ZAP)
@@ -112,6 +117,11 @@ jobs:
     needs: image_scan
 
     steps:
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.REPO_PWD }}" | docker login -u "${{ secrets.REPO_USER }}" --password-stdin
+
+      - name: Pull DVWA Image
+        run: docker pull ${{ secrets.REPO_USER }}/dvwa:latest
 
       # 🚀 Run DVWA
       - name: Run DVWA (Staging)
@@ -119,7 +129,7 @@ jobs:
           docker run -d \
             --name dvwa-staging \
             -p 8080:80 \
-            dvwa:latest
+            ${{ secrets.REPO_USER }}/dvwa:latest
 
       # ❤️ Health Check
       - name: Health Check DVWA
@@ -147,12 +157,12 @@ jobs:
             -r zap-report.html \
             -J zap-report.json || true
 
-      # 🚪 DAST Security Gate (désactivé pour DVWA)
+      # 🚪 DAST Security Gate (désactivé)
       - name: DAST Security Gate
         run: |
           echo "DAST completed – Security Gate disabled (DVWA is intentionally vulnerable)"
 
-      # 📤 Upload Reports
+      # 📤 Upload ZAP Reports
       - name: Upload ZAP Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -166,4 +176,3 @@ jobs:
         run: |
           docker stop dvwa-staging || true
           docker rm dvwa-staging || true
-
