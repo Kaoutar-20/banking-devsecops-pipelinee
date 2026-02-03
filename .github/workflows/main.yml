@@ -153,15 +153,17 @@ jobs:
         run: |
          mkdir -p zap-reports
          chmod 777 zap-reports
+
          docker run --rm \
-           --network dvwa-net \
-           -v $(pwd)/zap-reports:/zap/wrk \
-           zaproxy/zap2docker-stable \
-           zap-baseline.py \
-           -t http://dvwa-staging:80 \
-           -r /zap/wrk/zap-report.html \
-           -J /zap/wrk/zap-report.json \
-           -T 5
+          --network dvwa-net \
+          -v $(pwd)/zap-reports:/zap/wrk \
+           zaproxy/zap-stable \
+           bash -c "/zap/zap-baseline.py \
+          -t http://dvwa-staging:80 \
+          -r /zap/wrk/zap-report.html \
+          -J /zap/wrk/zap-report.json \
+          -T 5"
+
 
 
       - name: DAST Security Gate
