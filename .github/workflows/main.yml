@@ -9,7 +9,7 @@ jobs:
 
   # =========================
   # 1️⃣ SAST – SonarCloud
-  # ==========================
+  # =========================
   sast_scan:
     name: SAST - SonarCloud Scan
     runs-on: ubuntu-latest
@@ -149,7 +149,7 @@ jobs:
             sleep 5
           done
 
-            - name: OWASP ZAP Baseline Scan
+      - name: OWASP ZAP Baseline Scan
         run: |
           mkdir -p zap-reports
           chmod 777 zap-reports
@@ -161,7 +161,6 @@ jobs:
             -t http://dvwa-staging:80 \
             -r /zap/wrk/zap-report.html \
             -J /zap/wrk/zap-report.json || true
-
 
       - name: DAST Security Gate
         run: echo "DAST completed – Security Gate disabled (DVWA is intentionally vulnerable)"
