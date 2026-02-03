@@ -149,19 +149,22 @@ jobs:
             sleep 5
           done
 
+
       - name: OWASP ZAP Baseline Scan
         run: |
-          mkdir -p zap-reports
-          chmod 777 zap-reports
-          docker run --rm \
-            --user $(id -u):$(id -g) \
-            --network dvwa-net \
-            -v $(pwd)/zap-reports:/zap/wrk \
-            zaproxy/zap-stable \
-            zap-baseline.py \
-            -t http://dvwa-staging:80 \
-            -r /zap/wrk/zap-report.html \
-            -J /zap/wrk/zap-report.json || true
+         mkdir -p zap-reports
+         chmod 777 zap-reports
+         docker run --rm \
+           --network dvwa-net \
+           -v $(pwd)/zap-reports:/zap/wrk \
+           -e ZAP_HOME=/zap/wrk \
+           -e ZAP_USER=$(id -u) \
+           zaproxy/zap-stable \
+           zap-baseline.py \
+           -t http://dvwa-staging:80 \
+           -r /zap/wrk/zap-report.html \
+           -J /zap/wrk/zap-report.json || true
+ 
 
       - name: DAST Security Gate
         run: echo "DAST completed – Security Gate disabled (DVWA is intentionally vulnerable)"
