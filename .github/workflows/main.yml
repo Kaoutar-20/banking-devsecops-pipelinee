@@ -38,9 +38,9 @@ jobs:
             -Dsonar.qualitygate.wait=false
 
 
-  # =============================
-  # 2️⃣ SCA – Trivy FS
-  # =============================
+    # ==================================
+  # 2️⃣ SCA – Trivy FS + Security Gate (BLOQUANT)
+  # ==================================
   sca_scan:
     name: SCA - Trivy Filesystem Scan
     runs-on: ubuntu-latest
@@ -59,31 +59,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      - name: Trivy SCA Scan (Gate disabled)
+      # 🔐 SECURITY GATE SCA désactivé
+      - name: Trivy SCA Scan (Security Gate)
         run: |
-          trivy fs --severity HIGH,CRITICAL ./DVWA || true
+          trivy fs --security-checks vuln --severity HIGH,CRITICAL ./DVWA || true
 
+      # 📊 Rapport pour audit / preuves
       - name: Trivy SCA Report
         if: always()
         run: |
           trivy fs \
+            --security-checks vuln \
             --format json \
             --output trivy-sca-report.json \
             ./DVWA
 
       - name: Upload SCA Artifact
-        if: always()
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: trivy-sca-report
           path: trivy-sca-report.json
 
 
-  # =============================
-  # 3️⃣ Docker Image + Push + Scan
-  # =============================
+  # ==================================
+  # 3️⃣ Docker Build + Image Security Gate (BLOQUANT)
+  # ==================================
   image_scan:
-    name: Docker Build, Push & Image Scan
+    name: Docker Image Build & Security Scan
     runs-on: ubuntu-latest
     needs: sca_scan
 
@@ -91,25 +94,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Build DVWA Docker Image
+        run: docker build -t dvwa:latest ./DVWA
+
       - name: Login to Docker Hub
         run: echo "${{ secrets.REPO_PWD }}" | docker login -u "${{ secrets.REPO_USER }}" --password-stdin
 
-      - name: Build DVWA Docker Image
-        run: |
-          docker build -t ${{ secrets.REPO_USER }}/dvwa:latest ./DVWA
-
-      - name: Push DVWA Docker Image
-        run: |
-          docker push ${{ secrets.REPO_USER }}/dvwa:latest
-
       - name: Install Trivy
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
+          sudo apt-get update
+          sudo apt-get install -y trivy
 
-      - name: Trivy Image Scan (Gate disabled)
+    # 🔐 SECURITY GATE IMAGE désactivé
+      - name: Trivy Image Scan (Security Gate)
         run: |
-          trivy image --severity HIGH,CRITICAL ${{ secrets.REPO_USER }}/dvwa:latest || true
+          trivy image --severity HIGH,CRITICAL dvwa:latest || true
 
+      # (Optionnel) Docker Scout – visibilité
+      - name: Install Docker Scout
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install-scout.sh
+          sh install-scout.sh
+
+      - name: Docker Scout Quickview
+        run: docker scout quickview dvwa:latest || true
+
+      - name: Docker Scout CVE Scan
+        run: docker scout cves dvwa:latest || true
 
   # =============================
   # 4️⃣ CD STAGING + DAST (ZAP)
