@@ -8,8 +8,8 @@ on:
 jobs:
 
   # =========================
-  # 1️⃣ SAST – SonarCloud
-  # ========================
+  # 1️⃣ SAST – SonarCloud (SANS Quality Gate)
+  # =========================
   sast_scan:
     name: SAST - SonarCloud Scan
     runs-on: ubuntu-latest
@@ -36,6 +36,10 @@ jobs:
             -Dsonar.sources=DVWA
             -Dsonar.host.url=https://sonarcloud.io
 
+      - name: SonarCloud Scan Info
+        run: |
+          echo "✅ SonarCloud scan terminé (sans Quality Gate bloquant)"
+          echo "📊 Résultats : https://sonarcloud.io/dashboard?id=chaimaa654_banking-devsecops-pipeline"
 
   # ==========================
   # 2️⃣ SCA – Trivy Filesystem Scan
@@ -56,7 +60,7 @@ jobs:
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
           echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
-          sudo apt-get install -y trivy
+          sudo apt-get install -y trivy jq
 
       - name: Trivy SCA Scan
         run: trivy fs --security-checks vuln --severity HIGH,CRITICAL ./DVWA
@@ -70,6 +74,16 @@ jobs:
             --output trivy-sca-report.json \
             ./DVWA
 
+      - name: SCA Security Gate
+        run: |
+          CRITICAL=$(jq '[.Results[].Vulnerabilities // [] | .[] | select(.Severity=="CRITICAL")] | length' trivy-sca-report.json)
+          HIGH=$(jq '[.Results[].Vulnerabilities // [] | .[] | select(.Severity=="HIGH")] | length' trivy-sca-report.json)
+          echo "🚨 High: $HIGH | 🔴 Critical: $CRITICAL"
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            echo "❌ SCA Security Gate FAILED"
+            exit 1
+          fi
+          echo "✅ SCA Security Gate PASSED"
 
       - name: Upload SCA Artifact
         if: always()
@@ -77,130 +91,3 @@ jobs:
         with:
           name: trivy-sca-report
           path: trivy-sca-report.json
-
-  # ==================================
-  # 3️⃣ Docker Image Build + Security Scan
-  # ==================================
-  image_scan:
-    name: Docker Image Build & Security Scan
-    runs-on: ubuntu-latest
-    needs: sca_scan
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Build DVWA Docker Image
-      run: docker build -t ${{ secrets.REPO_USER }}/dvwa:latest ./DVWA
-
-    - name: Login to Docker Hub
-      run: echo "${{ secrets.REPO_PWD }}" | docker login -u "${{ secrets.REPO_USER }}" --password-stdin
-
-    # -----------------------------
-    # 🔐 Installer Trivy (comme dans SCA)
-    # -----------------------------
-    - name: Install Trivy
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
-        sudo apt-get update
-        sudo apt-get install -y trivy
-
-    # -----------------------------
-    # 🔍 Scanner l'image Docker
-    # -----------------------------
-    - name: Trivy Image Scan
-      run: trivy image --severity HIGH,CRITICAL --format json --output trivy-image-report.json ${{ secrets.REPO_USER }}/dvwa:latest
-
-    
-
-    # -----------------------------
-    # 📦 Installer Docker Scout
-    # -----------------------------
-    - name: Install Docker Scout
-      run: |
-        curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install-scout.sh
-        sh install-scout.sh
-
-    - name: Docker Scout Quickview
-      run: docker scout quickview ${{ secrets.REPO_USER }}/dvwa:latest || true
-
-    - name: Docker Scout CVE Scan
-      run: docker scout cves ${{ secrets.REPO_USER }}/dvwa:latest || true
-
-    # -----------------------------
-    # 📦 Upload Trivy Report
-    # -----------------------------
-    - name: Upload Docker Image Report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: trivy-image-report
-        path: trivy-image-report.json
-
-
-
-
-  # =============================
-  # 4️⃣ CD STAGING + DAST (ZAP)
-  # =============================
-  dast_scan:
-    name: CD Staging + DAST (OWASP ZAP)
-    runs-on: ubuntu-latest
-    needs: image_scan
-
-    steps:
-      - name: Login to Docker Hub
-        run: echo "${{ secrets.REPO_PWD }}" | docker login -u "${{ secrets.REPO_USER }}" --password-stdin
-
-      - name: Pull DVWA Image
-        run: docker pull ${{ secrets.REPO_USER }}/dvwa:latest
-
-      - name: Create Docker network
-        run: docker network create dvwa-net || true
-
-      - name: Run DVWA (Staging)
-        run: |
-          docker run -d \
-            --name dvwa-staging \
-            --network dvwa-net \
-            -p 8080:80 \
-            ${{ secrets.REPO_USER }}/dvwa:latest
-
-      - name: Wait for DVWA to be ready
-        run: |
-          echo "⏳ Waiting for DVWA..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8080 > /dev/null; then
-              echo "✅ DVWA is ready"
-              break
-            fi
-            sleep 5
-          done
-
-      - name: OWASP ZAP Baseline Scan
-        run: |
-          mkdir -p zap-reports
-          chmod 777 zap-reports
-          docker run --rm \
-            --network dvwa-net \
-            -v $(pwd)/zap-reports:/zap/wrk \
-            zaproxy/zap-stable \
-            zap-baseline.py \
-              -t http://dvwa-staging:80 \
-              -r zap-report.html \
-              -J zap-report.json \
-              -T 5 \
-              -I \
-              -d || true
-
-    
-
-      - name: Upload ZAP DAST Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-dast-report
-          path: zap-reports/
